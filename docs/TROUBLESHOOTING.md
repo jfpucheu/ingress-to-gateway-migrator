@@ -49,4 +49,4 @@ istioctl analyze -A
 ```
 
 ## 🤖 AI-Generated Troubleshooting
-This guide was created with Claude AI assistance. For more help, open an [issue](https://github.com/jfpucheu/ingress-to-gateway-migrator/issues).
+This guide was created with Claude AI assistance. For more help, open an [issue](https://github.com/your-username/ingress-to-gateway-migrator/issues).

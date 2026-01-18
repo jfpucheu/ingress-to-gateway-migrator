@@ -6,7 +6,7 @@
 
 ```bash
 # Option A: Clone from GitHub
-git clone https://github.com/jfpucheu/ingress-to-gateway-migrator.git
+git clone https://github.com/your-username/ingress-to-gateway-migrator.git
 cd ingress-to-gateway-migrator
 
 # Option B: Extract the ZIP archive
@@ -31,11 +31,15 @@ pip install -r requirements.txt
 ### Export your current Ingresses
 
 ```bash
-# All namespaces
+# All namespaces (Kubernetes List format - fully supported!)
 kubectl get ingress -A -o yaml > all-ingresses.yaml
 
 # Specific namespace
 kubectl get ingress -n production -o yaml > prod-ingresses.yaml
+
+# The script automatically detects and handles both:
+# - Kubernetes List format (kubectl get -o yaml)
+# - Multi-document YAML format (manual files with --- separators)
 ```
 
 ### Run the migration
@@ -110,7 +114,7 @@ kubectl get gateway -A
 ## Need Help?
 
 - 📚 [Complete documentation](README.md)
-- 💬 [Open an issue](https://github.com/jfpucheu/ingress-to-gateway-migrator/issues)
+- 💬 [Open an issue](https://github.com/your-username/ingress-to-gateway-migrator/issues)
 - 🤝 [Contribution guide](CONTRIBUTING.md)
 
 ---

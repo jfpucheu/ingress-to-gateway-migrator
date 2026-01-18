@@ -110,4 +110,4 @@ All generated code has been reviewed, tested, and validated for production use.
 
 ---
 
-**More questions?** Open an [issue](https://github.com/jfpucheu/ingress-to-gateway-migrator/issues) or check the [complete documentation](../README.md).
+**More questions?** Open an [issue](https://github.com/your-username/ingress-to-gateway-migrator/issues) or check the [complete documentation](../README.md).

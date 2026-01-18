@@ -40,8 +40,14 @@ class IngressMigrator:
         'nginx.ingress.kubernetes.io/limit-rpm',
     ]
     
-    def __init__(self, gateway_class: str):
+    def __init__(self, gateway_class: str, gateway_name: str = None, 
+                 gateway_namespace: str = 'istio-system', gateway_port: int = None,
+                 gateway_section: str = None):
         self.gateway_class = gateway_class
+        self.gateway_name = gateway_name or gateway_class
+        self.gateway_namespace = gateway_namespace
+        self.gateway_port = gateway_port
+        self.gateway_section = gateway_section
         self.http_routes = []
         self.tls_routes = []
         self.failed_ingresses = []
@@ -126,14 +132,24 @@ class IngressMigrator:
             })
     
     def create_http_route(self, ingress: Dict, rule: Dict, tls_configs: List) -> Dict:
-        """Crée un HTTPRoute depuis une règle Ingress"""
+        """Creates an HTTPRoute from an Ingress rule"""
         metadata = ingress.get('metadata', {})
         name = metadata.get('name', 'unnamed')
         namespace = metadata.get('namespace', 'default')
         host = rule.get('host', '')
         
-        # Nom unique pour l'HTTPRoute
+        # Unique name for HTTPRoute
         route_name = f"{name}-{host.replace('.', '-')}" if host else name
+        
+        # Build parentRef with custom values
+        parent_ref = {
+            'name': self.gateway_name,
+            'namespace': self.gateway_namespace
+        }
+        if self.gateway_port:
+            parent_ref['port'] = self.gateway_port
+        if self.gateway_section:
+            parent_ref['sectionName'] = self.gateway_section
         
         http_route = {
             'apiVersion': 'gateway.networking.k8s.io/v1',
@@ -143,23 +159,20 @@ class IngressMigrator:
                 'namespace': namespace,
             },
             'spec': {
-                'parentRefs': [{
-                    'name': self.gateway_class,
-                    'namespace': 'istio-system',  # À adapter selon votre configuration
-                }],
+                'parentRefs': [parent_ref],
                 'rules': []
             }
         }
         
-        # Copier les labels et annotations pertinentes
+        # Copy relevant labels and annotations
         if metadata.get('labels'):
             http_route['metadata']['labels'] = metadata['labels'].copy()
         
-        # Ajouter hostname si présent
+        # Add hostname if present
         if host:
             http_route['spec']['hostnames'] = [host]
         
-        # Convertir les paths HTTP
+        # Convert HTTP paths
         http_paths = rule.get('http', {}).get('paths', [])
         for path in http_paths:
             route_rule = self.convert_http_path(path, ingress)
@@ -217,18 +230,35 @@ class IngressMigrator:
         return rule
     
     def create_tls_route(self, ingress: Dict, tls_config: Dict) -> Dict:
-        """Crée un TLSRoute depuis une configuration TLS"""
+        """Creates a TLSRoute from TLS configuration - ONLY if ssl-passthrough is enabled"""
         metadata = ingress.get('metadata', {})
+        annotations = metadata.get('annotations', {})
+        
+        # Only create TLSRoute if ssl-passthrough is explicitly enabled
+        ssl_passthrough = annotations.get('nginx.ingress.kubernetes.io/ssl-passthrough', '').lower()
+        if ssl_passthrough != 'true':
+            return None
+        
         name = metadata.get('name', 'unnamed')
         namespace = metadata.get('namespace', 'default')
         hosts = tls_config.get('hosts', [])
         secret_name = tls_config.get('secretName')
         
-        if not hosts or not secret_name:
+        if not hosts:
             return None
         
-        # Nom unique pour le TLSRoute
+        # Unique name for TLSRoute
         route_name = f"{name}-tls-{hosts[0].replace('.', '-')}"
+        
+        # Build parentRef with custom values if provided
+        parent_ref = {
+            'name': self.gateway_name,
+            'namespace': self.gateway_namespace
+        }
+        if self.gateway_port:
+            parent_ref['port'] = self.gateway_port
+        if self.gateway_section:
+            parent_ref['sectionName'] = self.gateway_section
         
         tls_route = {
             'apiVersion': 'gateway.networking.k8s.io/v1alpha2',
@@ -238,29 +268,26 @@ class IngressMigrator:
                 'namespace': namespace,
             },
             'spec': {
-                'parentRefs': [{
-                    'name': self.gateway_class,
-                    'namespace': 'istio-system',
-                    'sectionName': 'https'
-                }],
+                'parentRefs': [parent_ref],
                 'hostnames': hosts,
                 'rules': [{
                     'backendRefs': [{
-                        'name': self.gateway_class,
+                        'name': self.gateway_name,
                         'port': 443
                     }]
                 }]
             }
         }
         
-        # Copier les labels
+        # Copy labels
         if metadata.get('labels'):
             tls_route['metadata']['labels'] = metadata['labels'].copy()
         
-        # Ajouter une annotation pour référencer le secret TLS
-        tls_route['metadata']['annotations'] = {
-            'gateway.istio.io/tls-secret': secret_name
-        }
+        # Add annotation to reference TLS secret if present
+        if secret_name:
+            tls_route['metadata']['annotations'] = {
+                'gateway.istio.io/tls-secret': secret_name
+            }
         
         return tls_route
     
@@ -298,50 +325,75 @@ class IngressMigrator:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Migre les Ingress Nginx vers Gateway API (HTTPRoute/TLSRoute) pour Istio',
+        description='Migrate Nginx Ingress to Gateway API (HTTPRoute/TLSRoute) for Istio',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Exemples:
+Examples:
   %(prog)s -i ingresses.yaml -g istio-gateway
-  %(prog)s -i ingresses.yaml -g my-gateway -o routes.yaml -t tls-routes.yaml
+  %(prog)s -i ingresses.yaml -g istio-gateway --gateway-name my-gateway --gateway-namespace gateway-system
+  %(prog)s -i ingresses.yaml -g my-gateway -o routes.yaml -t tls-routes.yaml --gateway-port 443
         """
     )
     
     parser.add_argument('-i', '--input', required=True,
-                        help='Fichier YAML contenant les Ingress à migrer')
+                        help='YAML file containing Ingresses to migrate')
     parser.add_argument('-g', '--gateway-class', required=True,
-                        help='Nom de la Gateway classe cible (ex: istio-gateway)')
+                        help='Target Gateway class name (e.g., istio-gateway)')
+    parser.add_argument('--gateway-name', 
+                        help='Gateway resource name (defaults to gateway-class value)')
+    parser.add_argument('--gateway-namespace', default='istio-system',
+                        help='Gateway namespace (default: istio-system)')
+    parser.add_argument('--gateway-port', type=int,
+                        help='Gateway port to specify in parentRef (optional)')
+    parser.add_argument('--gateway-section',
+                        help='Gateway listener section name (optional)')
     parser.add_argument('-o', '--http-output', default='httproutes.yaml',
-                        help='Fichier de sortie pour les HTTPRoutes (défaut: httproutes.yaml)')
+                        help='Output file for HTTPRoutes (default: httproutes.yaml)')
     parser.add_argument('-t', '--tls-output', default='tlsroutes.yaml',
-                        help='Fichier de sortie pour les TLSRoutes (défaut: tlsroutes.yaml)')
+                        help='Output file for TLSRoutes (default: tlsroutes.yaml)')
     parser.add_argument('-f', '--failed-output', default='failed-ingresses.yaml',
-                        help='Fichier de sortie pour les Ingress non migrés (défaut: failed-ingresses.yaml)')
+                        help='Output file for unmigrated Ingresses (default: failed-ingresses.yaml)')
     
     args = parser.parse_args()
     
-    print(f"🔄 Migration des Ingress vers Gateway API")
-    print(f"   Fichier d'entrée: {args.input}")
-    print(f"   Gateway classe: {args.gateway_class}")
+    print(f"🔄 Migrating Ingress to Gateway API")
+    print(f"   Input file: {args.input}")
+    print(f"   Gateway class: {args.gateway_class}")
+    if args.gateway_name:
+        print(f"   Gateway name: {args.gateway_name}")
+    print(f"   Gateway namespace: {args.gateway_namespace}")
+    if args.gateway_port:
+        print(f"   Gateway port: {args.gateway_port}")
+    if args.gateway_section:
+        print(f"   Gateway section: {args.gateway_section}")
     print()
     
-    # Créer le migrateur
-    migrator = IngressMigrator(args.gateway_class)
+    # Create migrator with gateway configuration
+    migrator = IngressMigrator(
+        gateway_class=args.gateway_class,
+        gateway_name=args.gateway_name,
+        gateway_namespace=args.gateway_namespace,
+        gateway_port=args.gateway_port,
+        gateway_section=args.gateway_section
+    )
     
-    # Charger les Ingress
+    # Load Ingresses
     ingresses = migrator.load_ingresses(args.input)
-    print(f"📥 {len(ingresses)} Ingress chargé(s)")
+    print(f"📥 {len(ingresses)} Ingress loaded")
     print()
     
-    # Migrer chaque Ingress
+    # Migrate each Ingress
     for ingress in ingresses:
         migrator.migrate_ingress(ingress)
     
-    # Sauvegarder les résultats
+    # Save results
     print()
     migrator.save_routes(args.http_output, args.tls_output, args.failed_output)
     print()
-    print("✅ Migration terminée")
+    print("✅ Migration completed")
+    print()
+    print("ℹ️  Note: TLSRoutes are only created for Ingresses with ssl-passthrough annotation")
+    print("   All other TLS certificates will be handled by the Gateway configuration")
 
 
 if __name__ == '__main__':

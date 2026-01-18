@@ -50,7 +50,24 @@ fi
 if [ -f "test-tls.yaml" ]; then
     echo -e "${GREEN}✓${NC} TLSRoutes generated"
 else
-    echo -e "${YELLOW}⚠${NC} No TLSRoutes generated (may be normal)"
+    echo -e "${YELLOW}⚠${NC} No TLSRoutes generated (expected - no ssl-passthrough)"
+fi
+
+# Test 3b: Test with custom gateway configuration
+echo ""
+echo "3️⃣b Testing with custom gateway configuration..."
+python3 migrate.py -i examples/sample-ingresses.yaml \
+    -g istio --gateway-name custom-gateway \
+    --gateway-namespace gateway-system --gateway-port 443 \
+    -o test-custom-http.yaml -t test-custom-tls.yaml > /dev/null 2>&1
+
+if grep -q "name: custom-gateway" test-custom-http.yaml && \
+   grep -q "namespace: gateway-system" test-custom-http.yaml && \
+   grep -q "port: 443" test-custom-http.yaml; then
+    echo -e "${GREEN}✓${NC} Custom gateway configuration working"
+else
+    echo -e "${RED}✗${NC} Custom gateway configuration failed"
+    exit 1
 fi
 
 # Test 4: YAML validation
@@ -97,6 +114,7 @@ echo ""
 echo "🧹 Cleaning up test files..."
 rm -f test-http.yaml test-tls.yaml test-failed.yaml
 rm -f test-http-adv.yaml test-tls-adv.yaml test-failed-adv.yaml
+rm -f test-custom-http.yaml test-custom-tls.yaml
 
 echo ""
 echo -e "${GREEN}✅ All tests passed!${NC}"

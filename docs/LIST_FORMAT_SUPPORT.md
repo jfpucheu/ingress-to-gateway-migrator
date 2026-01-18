@@ -101,7 +101,7 @@ Tested with a production file containing 23 Ingresses:
 
 ```
 🔄 Migration des Ingress vers Gateway API
-   Input file: devbench.yaml
+   Input file: ingress.yaml
    Gateway class: istio-gateway
 
 📥 23 Ingress loaded

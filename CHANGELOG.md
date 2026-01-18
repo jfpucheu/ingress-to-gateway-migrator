@@ -13,6 +13,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for other providers (Nginx Gateway Fabric, Contour)
 - Auto-generation of complementary Istio resources
 
+## [1.0.2] - 2026-01-18
+
+### Changed
+- 🔐 **TLS Certificate Strategy**: TLSRoutes are now **only created for Ingresses with `ssl-passthrough: true` annotation**. All other TLS certificates are expected to be handled at the Gateway level, aligning with modern Gateway API architecture.
+
+### Added
+- 🎛️ **Gateway Configuration Options**: New CLI parameters for precise Gateway targeting:
+  - `--gateway-name`: Specify Gateway resource name (defaults to gateway-class)
+  - `--gateway-namespace`: Specify Gateway namespace (defaults to istio-system)
+  - `--gateway-port`: Specify port in parentRef (optional)
+  - `--gateway-section`: Specify listener section name (optional)
+
+### Example
+```bash
+# Old behavior: All TLS configs → TLSRoutes
+./migrate.py -i ingresses.yaml -g istio-gateway
+# Result: 11 TLSRoutes created
+
+# New behavior: Only ssl-passthrough → TLSRoutes
+./migrate.py -i ingresses.yaml -g istio \
+  --gateway-name prod-gateway \
+  --gateway-namespace gateway-system \
+  --gateway-port 443
+# Result: 1 TLSRoute created (only for ssl-passthrough)
+```
+
+## [1.0.1] - 2026-01-18
+
+### Fixed
+- 🐛 **Kubernetes List format support**: Fixed issue where files from `kubectl get ingress -o yaml` (List format) were not properly parsed. The script now correctly handles both:
+  - Standard multi-document YAML (with `---` separators)
+  - Kubernetes List format (with `kind: List` and `items:` array)
+
 ## [1.0.0] - 2026-01-18
 
 ### Added

@@ -48,7 +48,7 @@ pip install -r requirements.txt
 ### Install from source
 
 ```bash
-git clone https://github.com/jfpucheu/ingress-to-gateway-migrator.git
+git clone https://github.com/your-username/ingress-to-gateway-migrator.git
 cd ingress-to-gateway-migrator
 pip install -r requirements.txt
 chmod +x migrate.py
@@ -69,6 +69,18 @@ The script automatically generates:
 - `tlsroutes.yaml` - All migrated TLSRoutes
 - `failed-ingresses.yaml` - Ingresses that couldn't be migrated with reasons
 
+### Supported Input Formats
+
+The script supports both:
+- **Multi-document YAML** (standard YAML with `---` separators)
+- **Kubernetes List format** (output from `kubectl get ingress -o yaml`)
+
+```bash
+# Both formats work seamlessly
+kubectl get ingress -A -o yaml > ingresses.yaml
+./migrate.py -i ingresses.yaml -g istio-gateway
+```
+
 ## 💻 Usage
 
 ### Full syntax
@@ -83,6 +95,10 @@ The script automatically generates:
 |--------|-------------|----------|---------|
 | `-i, --input` | YAML file containing Ingresses | ✅ | - |
 | `-g, --gateway-class` | Target Gateway class name | ✅ | - |
+| `--gateway-name` | Gateway resource name | ❌ | Same as gateway-class |
+| `--gateway-namespace` | Gateway namespace | ❌ | `istio-system` |
+| `--gateway-port` | Gateway port in parentRef | ❌ | None |
+| `--gateway-section` | Gateway listener section name | ❌ | None |
 | `-o, --http-output` | Output file for HTTPRoutes | ❌ | `httproutes.yaml` |
 | `-t, --tls-output` | Output file for TLSRoutes | ❌ | `tlsroutes.yaml` |
 | `-f, --failed-output` | File for unmigrated Ingresses | ❌ | `failed-ingresses.yaml` |
@@ -93,17 +109,47 @@ The script automatically generates:
 # Migration with single file
 ./migrate.py -i my-ingresses.yaml -g istio-gateway
 
+# Migration with custom gateway configuration
+./migrate.py \
+  -i ingresses.yaml \
+  -g istio \
+  --gateway-name prod-gateway \
+  --gateway-namespace gateway-system \
+  --gateway-port 443
+
 # Migration with custom output filenames
 ./migrate.py \
   -i ingresses.yaml \
   -g my-gateway \
-  -o http-routes.yaml \
-  -t tls-routes.yaml \
-  -f migration-failures.yaml
+  -o custom-http.yaml \
+  -t custom-tls.yaml \
+  -f custom-failed.yaml
 
-# Migration with multiple Ingresses in one file
-./migrate.py -i all-ingresses.yaml -g prod-gateway
+# Migration with listener section
+./migrate.py \
+  -i ingresses.yaml \
+  -g istio-gateway \
+  --gateway-section https-listener
 ```
+
+## 🔐 TLS Certificate Handling
+
+**Important:** TLSRoutes are **only created for Ingresses with `ssl-passthrough` annotation**:
+
+```yaml
+# This Ingress WILL create a TLSRoute
+annotations:
+  nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+
+# This Ingress will NOT create a TLSRoute
+# TLS is handled by Gateway certificate
+annotations:
+  nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+```
+
+This aligns with modern Gateway architecture where:
+- **Gateway** manages TLS certificates for most services
+- **TLSRoute** (passthrough) only for services that need to handle TLS themselves
 
 ## ✅ Supported Annotations
 
@@ -225,7 +271,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
 ## 🐛 Reporting Bugs
 
-Open an [issue](https://github.com/jfpucheu/ingress-to-gateway-migrator/issues) with:
+Open an [issue](https://github.com/your-username/ingress-to-gateway-migrator/issues) with:
 - Problem description
 - Example Ingress that fails
 - Python version
