@@ -47,16 +47,28 @@ class IngressMigrator:
         self.failed_ingresses = []
     
     def load_ingresses(self, filename: str) -> List[Dict]:
-        """Charge les Ingress depuis un fichier YAML"""
+        """Load Ingresses from a YAML file (supports both multi-doc and List formats)"""
         try:
             with open(filename, 'r') as f:
                 content = f.read()
-                # Support multi-document YAML
                 docs = list(yaml.safe_load_all(content))
-                ingresses = [doc for doc in docs if doc and doc.get('kind') == 'Ingress']
+                ingresses = []
+                
+                for doc in docs:
+                    if not doc:
+                        continue
+                    
+                    # Handle Kubernetes List format (kubectl get -o yaml)
+                    if doc.get('kind') == 'List' and 'items' in doc:
+                        list_items = doc['items']
+                        ingresses.extend([item for item in list_items if item.get('kind') == 'Ingress'])
+                    # Handle standard Ingress documents
+                    elif doc.get('kind') == 'Ingress':
+                        ingresses.append(doc)
+                
                 return ingresses
         except Exception as e:
-            print(f"Erreur lors du chargement du fichier: {e}", file=sys.stderr)
+            print(f"Error loading file: {e}", file=sys.stderr)
             sys.exit(1)
     
     def check_annotations(self, ingress: Dict) -> Tuple[bool, List[str]]:
