@@ -1,0 +1,216 @@
+---
+# Example 1: Simple HTTP Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: simple-app
+  namespace: production
+  labels:
+    app: simple-app
+    env: production
+spec:
+  rules:
+  - host: simple.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: simple-service
+            port:
+              number: 80
+
+---
+# Example 2: HTTPS Ingress with TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: secure-app
+  namespace: production
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - secure.example.com
+    secretName: secure-app-tls
+  rules:
+  - host: secure.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: secure-service
+            port:
+              number: 443
+
+---
+# Example 3: Advanced routing with path rewrite
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway
+  namespace: production
+  labels:
+    app: api-gateway
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+spec:
+  tls:
+  - hosts:
+    - api.example.com
+    secretName: api-tls
+  rules:
+  - host: api.example.com
+    http:
+      paths:
+      - path: /v1/users(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: users-service
+            port:
+              number: 8080
+      - path: /v1/products(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: products-service
+            port:
+              number: 8080
+      - path: /v1/orders(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: orders-service
+            port:
+              number: 8080
+
+---
+# Example 4: Multi-domain with different backends
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: multi-domain
+  namespace: production
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  tls:
+  - hosts:
+    - blog.example.com
+    - shop.example.com
+    secretName: multi-domain-tls
+  rules:
+  - host: blog.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: blog-service
+            port:
+              number: 443
+  - host: shop.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: shop-service
+            port:
+              number: 443
+
+---
+# Example 5: CORS-enabled API
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cors-api
+  namespace: production
+  annotations:
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.example.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+spec:
+  rules:
+  - host: cors-api.example.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: cors-api-service
+            port:
+              number: 8080
+
+---
+# Example 6: Exact path matching
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: exact-paths
+  namespace: production
+spec:
+  rules:
+  - host: exact.example.com
+    http:
+      paths:
+      - path: /health
+        pathType: Exact
+        backend:
+          service:
+            name: app-service
+            port:
+              number: 8080
+      - path: /metrics
+        pathType: Exact
+        backend:
+          service:
+            name: metrics-service
+            port:
+              number: 9090
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app-service
+            port:
+              number: 8080
+
+---
+# Example 7: Ingress with unsupported annotations (will fail migration)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auth-protected
+  namespace: production
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+spec:
+  rules:
+  - host: protected.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: protected-service
+            port:
+              number: 80
