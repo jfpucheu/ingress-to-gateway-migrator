@@ -22,7 +22,7 @@ This project adheres to the [Contributor Covenant Code of Conduct](https://www.c
 
 ### Reporting Bugs
 
-Bugs are tracked via [GitHub Issues](https://github.com/your-username/ingress-to-gateway-migrator/issues).
+Bugs are tracked via [GitHub Issues](https://github.com/jfpucheu/ingress-to-gateway-migrator/issues).
 
 Before creating an issue, check if it already exists. When creating a new issue, include:
 
@@ -277,13 +277,13 @@ if 'nginx.ingress.kubernetes.io/new-annotation' in annotations:
 
 If you have questions, feel free to:
 
-- Open a [GitHub Discussion](https://github.com/your-username/ingress-to-gateway-migrator/discussions)
+- Open a [GitHub Discussion](https://github.com/jfpucheu/ingress-to-gateway-migrator/discussions)
 - Join our [Slack channel](#) (if available)
 - Contact the maintainers
 
 ## Maintainers
 
-- [@your-username](https://github.com/your-username)
+- [@jfpucheu](https://github.com/jfpucheu)
 
 ## AI Development Note
 

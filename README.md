@@ -48,7 +48,7 @@ pip install -r requirements.txt
 ### Install from source
 
 ```bash
-git clone https://github.com/your-username/ingress-to-gateway-migrator.git
+git clone https://github.com/jfpucheu/ingress-to-gateway-migrator.git
 cd ingress-to-gateway-migrator
 pip install -r requirements.txt
 chmod +x migrate.py
@@ -225,7 +225,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
 ## 🐛 Reporting Bugs
 
-Open an [issue](https://github.com/your-username/ingress-to-gateway-migrator/issues) with:
+Open an [issue](https://github.com/jfpucheu/ingress-to-gateway-migrator/issues) with:
 - Problem description
 - Example Ingress that fails
 - Python version

@@ -6,7 +6,7 @@
 
 ```bash
 # Option A: Clone from GitHub
-git clone https://github.com/your-username/ingress-to-gateway-migrator.git
+git clone https://github.com/jfpucheu/ingress-to-gateway-migrator.git
 cd ingress-to-gateway-migrator
 
 # Option B: Extract the ZIP archive
@@ -110,7 +110,7 @@ kubectl get gateway -A
 ## Need Help?
 
 - 📚 [Complete documentation](README.md)
-- 💬 [Open an issue](https://github.com/your-username/ingress-to-gateway-migrator/issues)
+- 💬 [Open an issue](https://github.com/jfpucheu/ingress-to-gateway-migrator/issues)
 - 🤝 [Contribution guide](CONTRIBUTING.md)
 
 ---
